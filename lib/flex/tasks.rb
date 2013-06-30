@@ -10,9 +10,9 @@ module Flex
     end
 
     def default_options
-      @default_options ||= { :force          => false,
-                             :index          => Conf.variables[:index],
-                             :config_file    => Conf.config_file }
+      @default_options ||= { :force       => false,
+                             :index       => Conf.variables[:index],
+                             :config_file => Conf.config_file }
     end
 
     def create_indices
@@ -52,9 +52,10 @@ module Flex
       Flex.delete_index(:index => index) if exist?(index)
     end
 
-    def create(index)
-      config_hash[index] = {} unless config_hash.has_key?(index)
-      Flex.POST "/#{index}", config_hash[index]
+    def create(base_index, suffixed_index=nil)
+      suffixed_index ||= base_index
+      config_hash[base_index] = {} unless config_hash.has_key?(base_index)
+      Flex.POST "/#{suffixed_index}", config_hash[base_index]
     end
 
   end

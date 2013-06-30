@@ -39,8 +39,6 @@ module Flex
       raise ArgumentError, "Array expected as :collection, got #{args[:collection].inspect}" \
             unless args[:collection].is_a?(Array)
 
-      index  = args[:index]  || Conf.variables[:index]
-      type   = args[:type]   || Conf.variables[:type]
       action = args[:action] || 'index'
 
       meta = {}
@@ -54,8 +52,13 @@ module Flex
                   json = get_json(d) || next
                 end
                 m = {}
-                m['_index']   = get_index(d) || index
-                m['_type']    = get_type(d)  || type
+                index         = get_index(d) || args[:index]  || Conf.variables[:index]
+                if args[:migrating]
+                  Redis.sadd(:indices, index)
+                  index += Redis.get(:timestamp)
+                end
+                m['_index']   = index
+                m['_type']    = get_type(d)  || args[:type] || Conf.variables[:type]
                 m['_id']      = get_id(d)    || d       # we could pass an array of ids to delete
                 parent        = get_parent(d)
                 m['_parent']  = parent if parent
