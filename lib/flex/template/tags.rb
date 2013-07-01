@@ -38,7 +38,7 @@ module Flex
 
     class Tag
 
-      RESERVED = [:context, :path, :data, :params, :no_pruning, :raw_result, :raise]
+      RESERVED = [:context, :path, :data, :params, :no_pruning, :raw_result, :raise, :stop_indexing_proc]
 
       attr_reader :optional, :name, :default
 
