@@ -52,10 +52,9 @@ module Flex
       Flex.delete_index(:index => index) if exist?(index)
     end
 
-    def create(base_index, suffixed_index=nil)
-      suffixed_index ||= base_index
-      config_hash[base_index] = {} unless config_hash.has_key?(base_index)
-      Flex.POST "/#{suffixed_index}", config_hash[base_index]
+    def create(index)
+      config_hash[index] = {} unless config_hash.has_key?(index)
+      Flex.POST "/#{index}", config_hash[index]
     end
 
   end

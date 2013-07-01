@@ -46,24 +46,25 @@ module Flex
         meta["_#{opt}"] = args[opt] if args[opt]
       end
       lines = args[:collection].map do |d|
-                # skips indexing for objects that return nil as the indexed_json or are not flex_indexable?
-                unless action == 'delete'
-                  next if d.respond_to?(:flex_indexable?) && !d.flex_indexable?
-                  json = get_json(d) || next
-                end
                 m = {}
-                index         = get_index(d) || args[:index]  || Conf.variables[:index]
-                if args[:migrating]
-                  Redis.sadd(:indices, index)
-                  index += Redis.get(:timestamp)
-                end
+                index = get_index(d) || args[:index]  || Conf.variables[:index]
+                index = ModelMigration.prefix_index(index) if args[:model_migration]
                 m['_index']   = index
                 m['_type']    = get_type(d)  || args[:type] || Conf.variables[:type]
                 m['_id']      = get_id(d)    || d       # we could pass an array of ids to delete
-                parent        = get_parent(d)
-                m['_parent']  = parent if parent
-                routing       = get_routing(d)
-                m['_routing'] = routing if routing
+                case
+                # allows to pass a line verbatim
+                when d.is_a?(String)
+                  d
+                when action == 'index'
+                  # skips indexing for objects that are not flex_indexable?
+                  next if d.respond_to?(:flex_indexable?) && !d.flex_indexable?
+                  parent        = get_parent(d)
+                  m['_parent']  = parent if parent
+                  routing       = get_routing(d)
+                  m['_routing'] = routing if routing
+                  json = get_json(d) || next # skips objects that don't result in any json
+                end
                 line = MultiJson.encode({action => meta.merge(m)})
                 line << "\n#{json}" unless action == 'delete'
                 line
@@ -89,16 +90,23 @@ module Flex
     end
 
     def get_index(d)
-       d.class.flex.index if d.class.respond_to?(:flex)
+      case
+      when d.respond_to?(:flex)       then d.flex.index
+      when d.respond_to?(:_index)     then d._index
+      when d.class.respond_to?(:flex) then d.class.flex.index
+      when d.is_a?(Hash)              then d.delete(:_index) || d.delete('_index') ||
+                                           d.delete(:index)  || d.delete('index')
+      end
     end
 
     def get_type(d)
       case
-      when d.respond_to?(:flex)  then d.flex.type
-      when d.respond_to?(:_type) then d._type
-      when d.is_a?(Hash)         then d.delete(:_type) || d.delete('_type') ||
-                                      d.delete(:type)  || d.delete('type')
-      when d.respond_to?(:type)  then d.type
+      when d.respond_to?(:flex)       then d.flex.type
+      when d.respond_to?(:_type)      then d._type
+      when d.respond_to?(:type)       then d.type
+      when d.class.respond_to?(:flex) then d.class.flex.type
+      when d.is_a?(Hash)              then d.delete(:_type) || d.delete('_type') ||
+                                           d.delete(:type)  || d.delete('type')
       end
     end
 
@@ -135,6 +143,9 @@ module Flex
       when d.respond_to?(:flex_source)
         json = d.flex_source
         json.is_a?(String) ? json : MultiJson.encode(json)
+      when d.is_a?(Hash)
+        source = d['_source'] || d[:_source] || d[:source] || d['source'] || d[:data]
+        MultiJson.encode(source)
       when d.respond_to?(:to_json)
         d.to_json
       else MultiJson.encode(d)
