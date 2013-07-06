@@ -48,7 +48,7 @@ module Flex
       lines = args[:collection].map do |d|
                 m = {}
                 index = get_index(d) || args[:index]  || Conf.variables[:index]
-                index = ModelLiveReindex.prefix_index(index) if args[:live_reindex]
+                index = args[:live_reindex].prefix_index(index) if args[:live_reindex]
                 m['_index']   = index
                 m['_type']    = get_type(d)  || args[:type] || Conf.variables[:type]
                 m['_id']      = get_id(d)    || d       # we could pass an array of ids to delete
